@@ -1,0 +1,168 @@
+1. Express.js Application Code
+server.js
+const express = require('express');
+const app = express();
+const usersRouter = require('./routes/users');
+require('dotenv').config();
+
+app.use(express.json());
+
+app.use('/users', usersRouter);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(Server is running on port ${PORT});
+});
+
+
+
+2: Database Connection Configuration
+db.js
+const { Pool } = require('pg');
+require('dotenv').config();
+const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASS,
+  port: process.env.DB_PORT,
+});
+module.exports = pool;
+.env (Do NOT share this file)
+DB_USER=your_username
+DB_HOST=localhost
+DB_NAME=your_database
+DB_PASS=your_password
+DB_PORT=5432
+PORT=3000
+
+
+
+3; API Endpoint Implementation
+routes/users.js
+const express = require('express');
+const router = express.Router();
+const pool = require('../db');
+// GET all users
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM users');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+// GET a specific user
+router.get('/:id', async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+// CREATE a user
+router.post('/', async (req, res) => {
+  const { name, email, age } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO users (name, email, age) VALUES ($1, $2, $3) RETURNING *',
+      [name, email, age]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// UPDATE a user
+router.put('/:id', async (req, res) => {
+  const id = req.params.id;
+  const { name, email, age } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE users SET name = $1, email = $2, age = $3 WHERE id = $4 RETURNING *',
+      [name, email, age, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// DELETE a user
+router.delete('/:id', async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ message: 'User deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+module.exports = router;
+
+
+
+
+
+4; Brief Documentation: How to Run Your Project
+
+README.md
+# Express + PostgreSQL CRUD API
+A simple Express.js API with PostgreSQL that performs basic CRUD operations on a users table.
+##  Requirements
+Node.js
+PostgreSQL
+##  Setup Instructions
+*Install Node.js and PostgreSQL* (if not already installed)
+*Create PostgreSQL Database and Table*
+```sql
+CREATE DATABASE your_database;
+\c your_database
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100),
+  email VARCHAR(100),
+  age INTEGER
+);
+Clone the Repository and Install Dependencies
+git clone <your-repo-url>
+cd express-postgres-crud
+npm install
+Configure Environment Variables
+Create a .env file in the root directory and add:
+DB_USER=your_username
+DB_HOST=localhost
+DB_NAME=your_database
+DB_PASS=your_password
+DB_PORT=5432
+PORT=3000
+Start the Server
+node server.js
+The server runs at http://localhost:3000.
+
+ API Endpoints
+Method	Endpoint	Description
+GET	/users	Get all users
+GET	/users/:id	Get user by ID
+POST	/users	Create new user
+PUT	/users/:id	Update user
+DELETE	/users/:id	Delete user
+
+
+Testing
+Use Postman or a similar tool to test all endpoints.
+
+---
+
